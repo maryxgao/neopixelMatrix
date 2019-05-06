@@ -11,6 +11,8 @@
 // which pin on the Arduino is connected to the NeoPixels?
 #define PIN 6
 
+#define SENSOR_PIN A0
+
 #define GRID_COLS 16
 #define GRID_ROWS 47
 #define START_POSX 7
@@ -27,17 +29,16 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(GRID_COLS, GRID_ROWS, PIN,
   NEO_GRB            + NEO_KHZ800);
 
 #define OFF matrix.Color(0, 0, 0)
+#define BLUE matrix.Color(150, 0, 150)
+#define WHEELS matrix.Color(120, 120, 0)
+#define CRIMSON matrix.Color(175, 0, 0)
+#define GREY matrix.Color(128, 15, 0)
 #define WHITE matrix.Color(255, 255, 255)
-#define BLUE matrix.Color(70, 130, 180)
-#define WHEELS matrix.Color(80, 80, 80)
-#define GREY matrix.Color(190, 190, 190)
-#define DARK_GREY matrix.Color(105, 105, 105)
-#define CRIMSON matrix.Color(153, 0, 0)
-#define WHITE_INT matrix.Color(255, 255, 255)
 
 // global constants
 int lung_counter = LUNG_BLOCKS;
 int led = 13;
+bool triggered = false;
 
 struct ball;
 
@@ -435,6 +436,26 @@ int car[CAR_BLOCKS][2] = {
   {5, 46}
 };
 
+void draw_lungs() {
+    // from left to right, drawing vertical columns for the lungs
+    matrix.drawLine(0, 11, 0, 27, WHITE);
+    matrix.drawLine(1, 8, 1, 33, WHITE);
+    matrix.drawLine(2, 5, 2, 35, WHITE);
+    matrix.drawLine(3, 4, 3, 36, WHITE);
+    matrix.drawLine(4, 4, 4, 35, WHITE);
+    matrix.drawLine(5, 6, 5, 33, WHITE);
+    matrix.drawLine(6, 9, 6, 13, WHITE);
+    matrix.drawLine(7, 0, 7, 13, WHITE);
+    matrix.drawLine(8, 0, 8, 13, WHITE);
+    matrix.drawLine(9, 9, 9, 13, WHITE);
+    matrix.drawLine(10, 6, 10, 33, WHITE);
+    matrix.drawLine(11, 4, 11, 35, WHITE);
+    matrix.drawLine(12, 4, 12, 36, WHITE);
+    matrix.drawLine(13, 5, 13, 35, WHITE);
+    matrix.drawLine(14, 8, 14, 33, WHITE);
+    matrix.drawLine(15, 11, 15, 27, WHITE);
+  };
+
 struct ball {
   int id = 0;
 
@@ -472,11 +493,11 @@ struct ball {
      matrix.drawPixel(this->x, this->y, OFF);
 
      // randomness
-     if (random(0, 1000) < 1) {
+     if (random(0, 1000) < 2) {
        this->dy *= -1;
      }
 
-     if (random(0, 1000) < 8) {
+     if (random(0, 1000) < 16) {
       this->dx *= -1;
      }
 
@@ -501,6 +522,12 @@ struct ball {
            debug("ALL LUNGS", this);
 
            initial();
+           triggered = false;
+
+           matrix.fillScreen(0);
+           matrix.show();
+
+           draw_lungs();
            return false;
          }
 
@@ -581,7 +608,7 @@ void setup(void)
   delay(500);
 
   matrix.begin();
-  matrix.setBrightness(10);
+  matrix.setBrightness(15);
   matrix.fillScreen(0);
   matrix.show();
   delay(500);
@@ -592,31 +619,10 @@ void setup(void)
     balls[i] = new ball(i, START_POSX, START_POSY);
   }
 
-  matrix.show();
-
+  triggered = false;
   Serial.println("INIT COMPLETE");
 }
 
-
-void draw_lungs() {
-  // from left to right, drawing vertical columns for the lungs
-  matrix.drawLine(0, 11, 0, 27, WHITE);
-  matrix.drawLine(1, 8, 1, 33, WHITE);
-  matrix.drawLine(2, 5, 2, 35, WHITE);
-  matrix.drawLine(3, 4, 3, 36, WHITE);
-  matrix.drawLine(4, 4, 4, 35, WHITE);
-  matrix.drawLine(5, 6, 5, 33, WHITE);
-  matrix.drawLine(6, 9, 6, 13, WHITE);
-  matrix.drawLine(7, 0, 7, 13, WHITE);
-  matrix.drawLine(8, 0, 8, 13, WHITE);
-  matrix.drawLine(9, 9, 9, 13, WHITE);
-  matrix.drawLine(10, 6, 10, 33, WHITE);
-  matrix.drawLine(11, 4, 11, 35, WHITE);
-  matrix.drawLine(12, 4, 12, 36, WHITE);
-  matrix.drawLine(13, 5, 13, 35, WHITE);
-  matrix.drawLine(14, 8, 14, 33, WHITE);
-  matrix.drawLine(15, 11, 15, 27, WHITE);
-}
 
 void draw_car() {
   // from up to down, drawing rows for the light blue part of car
@@ -632,22 +638,39 @@ void draw_car() {
 }
 
 int cnt = 0;
+int reading;
+
 void loop(void)
 {
-  if (cnt % 2) {
-    draw_car();
+  for (int i = 0; i < 4; i++) {
+    reading = analogRead(SENSOR_PIN);
+    Serial.print("READING |> ");
+    Serial.println(reading);
   }
 
-  for (int i = 0; i < NUM_BALLS; i++) {
-    if (!balls[i]->move()) {
-      break;
+  if (reading > 150) {
+    triggered = true;
+    matrix.show();
+  }
+
+  if (triggered) {
+    if (cnt % 2) {
+      draw_car();
     }
+
+    for (int i = 0; i < NUM_BALLS; i++) {
+      if (!balls[i]->move()) {
+        break;
+      }
+    }
+
+    if (triggered) {
+      matrix.show();
+    }
+    delay(100);
+
+    cnt = (cnt + 1) % 10000;
   }
-
-  matrix.show();
-  delay(100);
-
-  cnt = (cnt + 1) % 1000;
 }
 
 // HELPER FUNCTIONS
@@ -660,6 +683,8 @@ void debug(const char* s, ball* b) {
   Serial.print(b->x);
   Serial.print(", ");
   Serial.print(b->y);
+  Serial.print(": ");
+  Serial.print(triggered);
   Serial.println();
 }
 
@@ -673,7 +698,7 @@ void initial(void) {
   // reset the ball to its starting position
   for (int i = 0; i < NUM_BALLS; i++) {
     balls[i]->reset();
-  
+
     // resets all lungs to having not been destroyed
     for (int j = 0; j < LUNG_BLOCKS; j++) {
       lungs[j][2] = 0;
