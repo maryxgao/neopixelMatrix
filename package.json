@@ -1,0 +1,25 @@
+{
+  "name": "neopixelmatrix",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint . --ext .json --ext .md",
+    "pretest": "npm run lint",
+    "test": "echo \"No tests\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maryxgao/neopixelMatrix.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maryxgao/neopixelMatrix/issues"
+  },
+  "homepage": "https://github.com/maryxgao/neopixelMatrix#readme",
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-plugin-json": "^1.4.0"
+  }
+}
